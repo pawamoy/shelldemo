@@ -1,0 +1,47 @@
+#!/bin/bash
+
+## \brief shelldemo
+
+if [ $# -eq 0 ]; then
+  doc usage "$0"
+  exit 1
+fi
+
+main() {
+  case $1 in
+    ## \option -h, --help
+    ## Prints this help and exit.
+    -h|--help) doc "$0"; exit 0 ;;
+  esac
+
+  local charinterval=0.05 char inst exec_inst line
+
+  export DEMO=1
+  bash -i < <(
+    while IFS='' read -r line; do
+      exec_inst=false
+      inst="$(echo "${line}" | grep ' *# demo: .*$')"
+      if [ -n "${inst}" ]; then
+        inst="${inst#*demo: }"
+        exec_inst=true
+        # shellcheck disable=SC2001
+        line="$(echo "${line}" | sed 's/ *# demo: .*$//')"
+      fi
+      while [ -n "${line}" ]; do
+        char="${line:0:1}"
+        echo -n "${char}"
+        line="${line:1}"
+        if [ "${char}" != " " ]; then
+          sleep ${charinterval}
+        fi
+      done
+      echo
+      if ${exec_inst}; then
+        eval "${inst}"
+      fi
+    done < "$1"
+  )
+}
+
+## \usage shelldemo FILE
+main "$@"

@@ -1,0 +1,57 @@
+stages:
+  - quality
+  - test
+
+cache:
+  paths:
+    - .basher
+
+.job_template: &job_definition
+  variables:
+    BASHER_ROOT: $CI_PROJECT_DIR/.basher
+  before_script:
+    - apk add --no-cache make git
+    - git clone --depth=1 https://github.com/basherpm/basher "$BASHER_ROOT" || true
+    - export PATH="$BASHER_ROOT/bin:$PATH"
+    - eval "$(basher init -)"
+    - basher install bats-core/bats-core
+    - basher install ztombol/bats-assert
+    - basher install ztombol/bats-support
+    - basher link "$(pwd)" "pawamoy/shelldemo"
+
+.quality_template: &quality_definition
+  <<: *job_definition
+  image: bash:4.4
+  stage: quality
+
+style:
+  <<: *quality_definition
+  script:
+    - apk add --no-cache xz
+    - wget -q -O - https://storage.googleapis.com/shellcheck/shellcheck-stable.linux.x86_64.tar.xz | tar xJ
+    - mv shellcheck-stable/shellcheck /usr/bin/shellcheck
+    - rm -rf shellcheck-stable
+    - make check-style
+
+documentation:
+  <<: *quality_definition
+  script:
+    - make check-documentation
+
+.test_template: &test_definition
+  <<: *job_definition
+  stage: test
+  script:
+    - make test
+
+bash-4.3:
+  <<: *test_definition
+  image: bash:4.3
+
+bash-4.4:
+  <<: *test_definition
+  image: bash:4.4
+
+bash-5.0:
+  <<: *test_definition
+  image: bash:5.0-beta
